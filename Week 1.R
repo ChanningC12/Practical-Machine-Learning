@@ -64,7 +64,33 @@ sum(Rule2(spam$capitalAve)==spam$type,na.rm=T)
 # Medium: 60% Training, 40% Test
 # Small: Cross Validation
 
-# 
+# Positive and Negative means what the algorithm decides. 
+# True Positive: correctly identified
+# False Positive: incorrectly identified
+# True Negative: correctly rejected
+# False Negative: incorrectly rejected
+
+# Sensitivity: TP/(TP+FN)
+# Specificity: TN/(TN+FP)
+# Positive Predictive Value: TP/(TP+FP)
+# Negative Predictive Value: TN/(FN+TN)
+# Accuracy: (TP+TN)/(TP+TN+FP+FN)
+
+# ROC: Receiver Operating Characteristic
+# xaxis: fp (1-specificity); yaxis: tp (sensitivity)
+# area under the ROC curve: AUC; AUC = 0.5 - random guessing; 0.8 consider to be good
+
+# Cross Validation
+# 1. Use the training set
+# 2. Split it into training/test set
+# 3. Build a model on the training set
+# 4. Evaluate the test set
+# 5. Repeat and average the estimate errors
+
+
+
+
+
 
 
 
