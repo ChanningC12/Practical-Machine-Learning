@@ -1,0 +1,71 @@
+library(caret)
+# PreProcess
+# Data Splitting
+# Train/Test Function
+# Model Comparison
+library(kernlab)
+# Data Splitting
+inTrain = createDataPartition(y=spam$type,p=0.75,list=F)
+training = spam[inTrain,]
+testing = spam[-inTrain,]
+dim(training)
+# Fit a Model
+modelFit = train(type~.,data=training,method="glm")
+modelFit # see Accuracy and Kappa
+modelFit$finalModel
+# Prediction
+predictions = predict(modelFit, newdata=testing)
+predictions
+confusionMatrix(predictions,testing$type)
+
+# k-fold
+set.seed(32323)
+folds = createFolds(y=spam$type,k=10,list=T,returnTrain=T) # returnTrain = T, returns to train set
+sapply(folds,length)
+folds[[1]][1:10]
+
+# Resample
+folds = createResample(y=spam$type,times=10,list=T)
+sapply(folds,length)
+
+# Time Slices
+set.seed(32323)
+tme = 1:1000
+folds = createTimeSlices(y=tme,initialWindow = 20, horizon = 10)
+names(folds)
+
+# Metric options
+# continous outcomes: RMSE, Rsquare
+# categorical outcomes: Accuracy, Kappa
+
+set.seed(1235)
+modelFit2 = train(type~.,data=training,method="glm")
+modelFit2
+
+# Plotting Predictors
+library(ISLR)
+library(ggplot2)
+data(Wage)
+summary(Wage)
+# Get training/test sets
+inTrain = createDataPartition(y=Wage$wage,p=0.7,list=F)
+training = Wage[inTrain,]
+testing = Wage[-inTrain,]
+dim(training)
+dim(testing)
+
+# Feature Plot
+featurePlot(x=training[,c("age","education","jobclass")],
+            y=training$wage,
+            plot="pairs")
+# Qplot
+qplot(age,wage,data=training)
+
+
+
+
+
+
+
+
+ 
