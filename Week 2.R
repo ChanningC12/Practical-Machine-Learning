@@ -126,3 +126,50 @@ head(bsBasis)
 lm1 = lm(wage~bsBasis, data=training)
 plot(training$age,training$wage,pch=19,cex=0.5)
 points(training$age,predict(lm1,newdata=training),col="red",pch=19,cex=0.5)
+# test set
+predict(bsBasis,age=testing$age)
+
+
+## Preprocessing with PCA
+# Include some of the key features that capture majority of the variables
+library(kernlab)
+library(caret)
+data(spam)
+inTrain = createDataPartition(y=spam$type,p=0.75,list=F)
+training = spam[inTrain,]
+testing = spam[-inTrain,]
+M = abs(cor(training[,-58]))
+diag(M)=0 # correlation between variable itself to be 0
+which(M>0.8,arr.ind=T)
+names(spam)[c(34,32)]
+plot(spam[,34],spam[,32])
+
+# PCA, pick the combination that captures the most information possible
+smallSpam = spam[,c(34,32)]
+prComp = prcomp(smallSpam)
+plot(prComp$x[,1],prComp$x[,2])
+prComp$rotation
+
+typeColor = ((spam$type=="spam")*1+1)
+prComp = prcomp(log10(spam[,-58]+1))
+plot(prComp$x[,1],prComp$x[,2],col=typeColor,xlab="PCA1",ylab="PCA2")
+
+# PCA with caret
+preProc = preProcess(log10(spam[,-58]+1),method="pca",pcaComp=2)
+spamPC = predict(preProc,log10(spam[,-58]+1))
+plot(spamPC[,1],spamPC[,2],col=typeColor)
+
+# training
+preProc = preProcess(log10(training[,-58]+1),method="pca",pcaComp=2)
+trainPC = predict(preProc,log10(training[,-58]+1))
+modelFit = train(training$type~.,method="glm",data=trainPC)
+
+# test, you have to use the same PC calculated from training set for the test variables
+testPC = predict(preProc,log10(testing[,-58]+1))
+confusionMatrix(testing$type,predict(modelFit,testPC))
+
+# Alternative 
+modelFit = train(training$type~.,method="glm",preProcess="pca",data=training)
+confusionMatrix(testing$type,predict(modelFit,testing))
+
+
