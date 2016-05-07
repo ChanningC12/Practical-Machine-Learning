@@ -172,4 +172,67 @@ confusionMatrix(testing$type,predict(modelFit,testPC))
 modelFit = train(training$type~.,method="glm",preProcess="pca",data=training)
 confusionMatrix(testing$type,predict(modelFit,testing))
 
+## Predicting with Regression
+library(caret)
+data(faithful)
+set.seed(333)
+inTrain = createDataPartition(y=faithful$waiting,p=0.5,list=F)
+trainFaith = faithful[inTrain,]
+testFaith = faithful[-inTrain,]
+head(trainFaith)
+plot(trainFaith$waiting,trainFaith$eruptions,pch=19,col="blue",xlab="Waiting",ylab="Duration")
+lm1 = lm(eruptions~waiting,data=trainFaith)
+summary(lm1)
+lines(trainFaith$waiting,lm1$fitted,lwd=3)
+coef(lm1)[1] + coef(lm1)[2]*80
+newdata=data.frame(waiting=80)
+predict(lm1,newdata)
+# test set
+par(mfrow=c(1,2))
+plot(trainFaith$waiting,trainFaith$eruptions,pch=19,col="blue",xlab="Waiting",ylab="Duration")
+lines(trainFaith$waiting,lm1$fitted,lwd=3)
+plot(testFaith$waiting,testFaith$eruptions,pch=19,col="blue",xlab="Waiting",ylab="Duration")
+lines(testFaith$waiting,predict(lm1,newdata=testFaith),lwd=3)
+# training / test error
+sqrt(sum(lm1$fitted-trainFaith$eruptions)^2)
+sqrt(sum((predict(lm1,newdata=testFaith)-testFaith$eruptions)^2))
+# prediction intervals
+pred1 = predict(lm1,newdata=testFaith,interval="prediction")
+ord = order(testFaith$waiting)
+plot(testFaith$waiting,testFaith$eruptions,pch=19,col="blue")
+matlines(testFaith$waiting[ord],pred1[ord,],type="l",,col=c(1,2,2),lty=c(1,1,1),lwd=3)
+# same with caret
+modFit = train(eruptions~waiting,data=trainFaith,method="lm")
+summary(modFit$finalModel)
 
+# Predicting with multiple covariates
+library(ISLR)
+library(ggplot2)
+library(caret)
+data(Wage)
+Wage = subset(Wage,select=-c(logwage))
+summary(Wage)
+inTrain = createDataPartition(y=Wage$wage,p=0.7,list=F)
+training = Wage[inTrain,]
+testing = Wage[-inTrain,]
+dim(training)
+dim(testing)
+featurePlot(x=training[,c("age","education","jobclass")],y = training$wage, plot="pairs")
+qplot(age,wage,data=training)
+qplot(age,wage,colour=jobclass,data=training)
+qplot(age,wage,colour=education,data=training)
+modFit = train(wage~age+jobclass+education,method="lm",data=training)
+print(modFit)
+finMod = modFit$finalModel
+# Diagnostics
+par(mfrow=c(1,1))
+plot(finMod,1,pch=19,cex=0.5,col="#00000010")
+qplot(finMod$fitted,finMod$residuals,colour=race,data=training)
+plot(finMod$residuals,pch=19)
+# predicted versus truth in test set
+pred = predict(modFit,testing)
+qplot(wage,pred,colour=year,data=testing)
+# all covariates
+modFitAll = train(wage~.,data=training,method="lm")
+pred = predict(modFitAll,testing)
+qplot(wage,pred,data=testing)
