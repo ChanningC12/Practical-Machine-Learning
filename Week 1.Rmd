@@ -78,6 +78,29 @@ plot(smallSpam$capitalAve,col=spamLabel)
 - Testing: validate the model (can not use multiple model on test set, that's training the model)
 - Validation: Also use to validate the model (refine model on test set and validate on validation set)
 
+##### Common error measures
+1. Mean squared error (or root mean squared error), continuous data, sensitive to outliers
+2. Median absolute deviation, continuous data, often more robust. Median of the distance between observed value and predicted value, absolute value
+3. Sensitivity (recall), if you want few missed positives, fewer FN
+4. Specificity, if you want few negatives called positives, FP
+5. Accuracy, weights false positives / negatives equally
+6. Concordance, kappa
+
+##### Cross-validation Approach
+1. Use the training set
+2. Split it into trainin/test sets
+3. Build a model on the training set
+4. Evaluate on the test set
+5. Repeat and average the estimated errors
+
+##### Considerations
+1. For time series data, data must be used in chunks
+2. For k-fold cross validation
+- Large k, less bias (predicted to truth), more variance
+- Smaller k, more bias, less variance
+3. Random sampling must be done without replacement
+4. Random sampling with replacement is the bootstrap
+5. If you cross-validate to pick predictors estimate you must estimate errors on independent data
 
 
 

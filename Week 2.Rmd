@@ -1,0 +1,171 @@
+---
+output: html_document
+---
+Practical Machine Learning - Week 2
+============================================================
+##### Caret Package
+- preProcess
+- Data splitting
+    - createDataPartition
+    - createResample
+    - createTimeSlices
+- Training/testing functions
+- Confusion matrix
+
+##### Machine learning algorithms: unify the prediction process, integrate most of the algorithms
+```{r include=FALSE}
+ library(caret)
+ library(kernlab)
+ library(ROCR)
+```
+##### Use createDataPartition to stratify the dataset into train and test
+```{r}
+ data(spam)
+ inTrain = createDataPartition(y=spam$type,p=0.75,list=F)
+ training = spam[inTrain,]
+ testing = spam[-inTrain,]
+ dim(training)
+```
+##### Fit a model
+```{r include=FALSE}
+set.seed(32423)
+modelFit = train(type~.,data=training,method="glm")
+```
+```{r}
+modelFit
+modelFit$finalModel
+```
+##### Prediction
+```{r}
+predictions = predict(modelFit,newdata=testing,type="prob")
+predictions = as.data.frame(predictions)
+roc_pred = prediction(predictions$spam,testing$type)
+roc_perf = performance(roc_pred,measure="tpr",x.measure="fpr")
+plot(roc_perf,main="ROC Curve")
+auc_perf = performance(roc_pred,measure="auc")
+unlist(auc_perf@y.values)
+```
+
+##### Confusion matrix
+```{r}
+predictions_class = predict(modelFit,newdata=testing,type="raw")
+confusionMatrix(predictions_class,testing$type)
+```
+
+
+# Data Slicing
+##### Create k-fold
+```{r}
+set.seed(32323)
+folds = createFolds(y=spam$type,k=10,list=T,returnTrain=T)
+sapply(folds,length)
+```
+
+##### Resampling / bootstrapping
+```{r}
+set.seed(323233)
+folds = createResample(y=spam$type,times=10,list=T)
+sapply(folds,length)
+```
+
+##### Time Slices
+```{r}
+set.seed(3232333)
+tme = 1:1000
+folds = createTimeSlices(y=tme,initialWindow = 20, horizon = 10)
+names(folds)
+```
+
+# Training Options
+- preProcess
+- weights
+- metric
+- trControl = trainControl
+- tuneGrid
+- tuneLength
+
+#### Metric options
+##### Continuous outcomes:
+- RMSE (Root mean squared error)
+- RSquare
+##### Categorical outcomes:
+- Accuracy
+- Kappa
+
+#### trainControl
+- method: boot, boot632, cv, repeatedcv, LOOCV, etc.
+- number
+
+
+# Plotting Predictors
+```{r include = F}
+library(ISLR)
+library(ggplot2)
+library(caret)
+```
+
+##### Summary of Wage data
+```{r}
+data(Wage)
+summary(Wage)
+```
+
+##### Build training set
+```{r}
+inTrain = createDataPartition(y=Wage$wage,p=0.7,list=F)
+training = Wage[inTrain,]
+testing = Wage[-inTrain,]
+dim(training)
+dim(testing)
+```
+
+##### feature plot
+```{r}
+featurePlot(x=training[,c("age","education","jobclass")],
+            y=training$wage,
+            plot="pairs")
+```
+
+##### Qplot
+```{r}
+qplot(age,wage,data=training)
+qplot(age,wage,colour=jobclass,data=training)
+```
+
+##### Regression smoothers
+```{r}
+qq = qplot(age,wage,colour=education,data=training)
+qq + geom_smooth(method="lm",formula=y~x)
+```
+
+##### cut2, making factors, binning and capping
+```{r include=FALSE}
+library(Hmisc)
+cutWage = cut2(training$wage,g=3)
+table(cutWage)
+```
+
+##### Boxplot
+```{r}
+p1 = qplot(cutWage,age,data=training,fill=cutWage,geom=c("boxplot"))
+p1
+t1 = table(cutWage,training$jobclass)
+t1
+prop.table(t1,1) # row %
+```
+
+##### Density plots
+```{r}
+qplot(wage,colour=education,data=training,geom="density")
+```
+
+
+
+
+
+
+
+
+
+
+
