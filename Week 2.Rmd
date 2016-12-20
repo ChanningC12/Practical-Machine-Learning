@@ -160,6 +160,82 @@ qplot(wage,colour=education,data=training,geom="density")
 ```
 
 
+# Preprocess
+```{r}
+hist(training$capitalAve,main="",xlab="ave. capital run length")
+mean(training$capitalAve)
+sd(training$capitalAve)
+```
+##### To standardize the variable
+```{r}
+trainCapAveS = (training$capitalAve-mean(training$capitalAve))/sd(training$capitalAve)
+mean(trainCapAves)
+```
+
+##### preProcess function
+```{r}
+pre0bj = preProcess(training[,-58],method=c("center","scale"))
+trainCapAves = predict(pre0bj,training[,-58])$capitalAve
+```
+
+##### preProcess Impute data
+```{r}
+set.seed(1333)
+preObj = preProcess(training[,-58],method="knnImpute")
+capAve = predict(preObj,training[,-58])$capAve
+```
+
+# Covariate Creation
+##### Example
+```{r}
+data(Wage)
+inTrain = createDataPartition(Wage$wage,p=0.7,list=F)
+training = Wage[inTrain,]
+testing = Wage[-inTrain,]
+````
+
+##### Turn categorical variables to dummy variables
+```{r}
+table(training$jobclass)
+```
+
+```{r}
+dummies = dummyVars(wage~jobclass,data=training)
+head(predict(dummies,newdata=training))
+```
+
+##### Removing zero covariates
+```{r}
+nsv = nearZeroVar(training,saveMetrics=T)
+nsv
+```
+
+##### Spline basis
+```{r}
+library(splines)
+bsBasis = bs(training$age,df=3)
+bsBasis
+```
+
+##### Fitting curves with splines
+```{r}
+lm1 = lm(wage~bsBasis,data=training)
+plot(training$age,training$wage,pch=19,cex=0.5)
+points(training$age,predict(lm1,newdata=training,col="red",pch=19,cex=0.5))
+```
+
+##### Splines on the test set
+```{r}
+predict(bsBasis,age=testing$age)
+```
+
+
+
+
+
+
+
+
 
 
 
