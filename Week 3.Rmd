@@ -1,0 +1,239 @@
+Practical Machine Learning - Week 3
+===================================
+
+## Predicting with trees
+### Measure of impurity
+- Pmk: the probability of class k appears in leaf m
+- Gini index: 1 minus the sum of probability^2 belong to each of the class
+- 0 = perfect purity; 0.5 = no purity
+- Deviance/information gain: For each of the class, sum -Pmk*log2(Pmk), 0 perfect purity, 1 no purity
+
+
+```{r}
+data(iris)
+library(ggplot2)
+names(iris)
+```
+
+```{r}
+library(caret)
+inTrain = createDataPartition(y=iris$Species,p=0.7,list=F)
+training = iris[inTrain,]
+testing = iris[-inTrain,]
+dim(training)
+dim(testing)
+```
+
+#### Plot the petal widths/sepal width by Species
+```{r, echo=FALSE}
+qplot(Petal.Width,Sepal.Width,colour=Species,data=training)
+```
+
+#### Train the tree model
+```{r}
+ctrl = trainControl(method="cv",number=5,summaryFunction = twoClassSummary, classProbs = T)
+modFit = train(Species~.,data=training,method="rpart",tuneLength=20)
+modFit
+print(modFit$finalModel)
+```
+
+#### Plot the prettier plots
+```{r}
+library(rattle)
+fancyRpartPlot(modFit$finalModel)
+```
+
+#### Predict new values
+```{r}
+predict(modFit,newdata=testing)
+```
+
+## Bagging (bootstrap aggregating)
+#### Basic idea
+- Resample cases and recalculate predictions, average the resampled, refitted predictive results to get a smoother fit
+- Average or majority vote
+#### Notes:
+- Similar bias
+- Reduced variance
+- More useful for non-linear functions
+
+#### Ozone data
+```{r}
+library(ElemStatLearn)
+data(ozone,package="ElemStatLearn")
+ozone = ozone[order(ozone$ozone),]
+```
+
+#### Bagging in caret
+- bagEarth
+- treebag
+- bagFDA
+
+
+## Random Forest
+- Bootstrap samples
+- At each split, bootstrap variables
+- Grow multiple trees and vote
+- Average the predicion probability for all the trees together
+
+#### Pros
+- Accuracy
+#### Cons
+- Speed
+- Interpretability
+- Overfitting
+
+
+#### Example
+```{r}
+modFit = train(Species~.,data=training,method="rf",prox=T)
+modFit
+```
+
+#### Look at specific function in a tree
+```{r}
+getTree(modFit$finalModel,k=2)
+```
+
+#### Class "centers"
+```{r}
+irisP = classCenter(training[c(3,4)],training$Species,modFit$finalModel$prox)
+irisP = as.data.frame(irisP)
+irisP$Species = rownames(irisP)
+p = qplot(Petal.Width,Petal.Length,col=Species,data=training)
+p + geom_point(aes(x=Petal.Width,y=Petal.Length,col=Species),size=5,shape=4,data=irisP)
+```
+
+#### Predict new value
+```{r}
+pred = predict(modFit,newdata=testing)
+testing$predRight <- pred==testing$Species
+table(pred,testing$Species)
+```
+
+#### See which one is missed
+```{r}
+qplot(Petal.Width,Petal.Length,colour=predRight,data=testing,main="newdata Prediction")
+```
+
+
+## Boosting
+- Take lots of weak learners
+- Weight them and add them up
+- Get a stronger predictor  
+#### The idea is to do multiple iterations with upgrading the weights on the misclassified data. And finally, sum all the iterations up, each with its weights.  
+
+#### Example
+```{r}
+library(ISLR)
+data(Wage)
+library(ggplot2)
+library(caret)
+Wage = subset(Wage,select=-c(logwage))
+inTrain = createDataPartition(y=Wage$wage,p=0.7,list=F)
+training = Wage[inTrain,]
+testing = Wage[-inTrain,]
+```
+
+#### Build the model (gbm, gradiant boosting trees)
+```{r,include=FALSE}
+modFit = train(wage~.,method="gbm",data=Wage,verbose=F)
+```
+```{r}
+modFit
+qplot(predict(modFit,newdata=testing),wage,data=testing)
+```
+
+## Model Based Prediction
+```{r}
+data(iris)
+library(ggplot2)
+names(iris)
+table(iris$Species)
+```
+
+#### Create training set and testing set
+```{r}
+inTrain = createDataPartition(y=iris$Species,p=0.7,list=F)
+training = iris[inTrain,]
+testing = iris[-inTrain,]
+dim(training)
+dim(testing)
+```
+
+#### Build the LDA / Naivt Bayes model
+```{r,include=F}
+modlda = train(Species~.,data=training,method="lda")
+modnb = train(Species~.,data=training,method="nb")
+```
+
+```{r}
+plda = predict(modlda,newdata=testing)
+pnb = predict(modnb,newdata=testing)
+table(plda,pnb)
+```
+
+#### Comparison of the result
+```{r}
+equalPredictions = (plda==pnb)
+qplot(Petal.Width,Sepal.Width,colour=equalPredictions,data=testing)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
