@@ -1,0 +1,59 @@
+Practical Machine Learning - Week 4
+===================================
+
+## Regularized Regression
+#### Basic Idea: Penalize large coefficients
+#### Prostate Cancer
+```{r}
+library(ElemStatLearn)
+data(prostate)
+str(prostate)
+```
+
+#### For training data, as the number of predictors increase, sum of squared errors will always decrease  
+#### For testing data, the residual sum of squares may hit the bottom at some point but increase when the model is over complicated and overfitting  
+
+#### PRSS: penalized residual sum of squares (RSS + lambda*beta)  
+
+#### The penalty parameter lambda will shrink the coefficient if the coefficient is too big  
+
+### Ridge Regression
+#### Penalizing the coefficient using square of lambda, if the lambda is huge, then it forces all the coefficients close to zero
+#### When lambda is close to zero, we get to the pure least square solution
+
+### Lasso
+#### Constrain the absolute value of coefficient
+#### Can shrink the coefficient to exactly zero, so it helps with model selection as well
+
+
+## Average Classifiers
+#### Majority Vote
+#### Model stacking example
+```{r}
+library(ISLR)
+data(Wage)
+library(ggplot2)
+library(caret)
+Wage = subset(Wage,select=-c(logwage))
+inBuild = createDataPartition(y=Wage$wage,p=0.7,list=F)
+validation = Wage[-inBuild,]
+buildData = Wage[inBuild,]
+inTrain = createDataPartition(y=buildData$wage,p=0.7,list=F)
+training = buildData[inTrain,]
+testing = buildData[-inTrain,]
+dim(validation)
+dim(training)
+dim(testing)
+```
+
+#### Build two different models: glm and rf
+```{r}
+mod1 = train(wage~.,data=training,method="glm")
+mod2 = train(wage~.,data=training,method="rf",trControl=trainControl(method="cv"),number=3)
+mod1
+mod2
+```
+
+
+
+

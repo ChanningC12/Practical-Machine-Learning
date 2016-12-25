@@ -1,0 +1,120 @@
+Practical Machine Learning - Week 4 Continued
+=============================================
+
+## Time series analysis
+#### Google Data Example
+```{r,include=F}
+library(quantmod)
+```
+
+```{r}
+from.dat = as.Date("01/01/08",format="%m/%d/%y")
+to.dat = as.Date("12/21/16",format="%m/%d/%y")
+getSymbols("GOOG",src="google",from=from.dat,to=to.dat)
+head(GOOG)
+```
+
+#### Time series for open market stock price
+#### Convert the time series data to a monthly time based data
+```{r}
+mGoog = to.monthly(GOOG)
+googOpen = Op(mGoog)
+ts1 = ts(googOpen,frequency=12)
+plot(ts1,xlab="Years+1",ylab="GOOG")
+```
+
+#### Example in Time Decomposition
+- Trend
+- Season
+- Cyclic
+
+#### Decompose the data
+```{r}
+plot(decompose(ts1),xlab="Years+1")
+```
+
+#### Divide into train/test
+```{r}
+ts1Train = window(ts1,start=1,end=3)
+ts1Test = window(ts1,start=3,end=4)
+```
+
+#### Simple moving average
+```{r}
+plot(ts1Train)
+lines(ma(ts1Train,order=2),col="red")
+```
+
+#### Exponential smoothing: weight nearby time point as higher value  
+```{r}
+ets1 = ets(ts1Train,model="MMM")
+fcast = forecast(ets1)
+plot(fcast)
+lines(ts1Test,col="red")
+```
+
+#### Get the accuracy
+```{r}
+accuracy(fcast,ts1Test)
+```
+
+#### Packages: quantmod, quandl
+
+
+## Unsupervised Prediction: no label
+#### Example
+```{r}
+data(iris)
+library(ggplot2)
+inTrain = createDataPartition(y=iris$Species,p=0.7,list=F)
+training = iris[inTrain,]
+testing = iris[-inTrain,]
+dim(training)
+dim(testing)
+```
+
+#### Cluster with k-means
+```{r}
+kMeans1 = kmeans(subset(training,select=-c(Species)),center=3)
+training$cluster = as.factor(kMeans1$cluster)
+qplot(Petal.Width,Petal.Length,colour=clusters,data=training)
+```
+
+#### Compare clusters to real label
+```{r}
+table(kMeans1$cluster,training$Species)
+```
+
+#### Build predictors
+```{r}
+modFit = train(cluster~.,data=subset(training,select=-c(Species)),method="rpart")
+modFit
+table(predict(modFit,training),training$Species)
+```
+
+#### Apply on the test
+```{r}
+testClusterPred = predict(modFit,testing)
+table(testClusterPred,testing$Species)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
