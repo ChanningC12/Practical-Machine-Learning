@@ -1,0 +1,226 @@
+---
+title: "Practical Machine Learning Project"
+author: "Chi Cheng"
+date: "January 20, 2017"
+output: html_document
+---
+
+### **Project Introduction**
+#### Background
+##### Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+#### Data
+##### The training data for this project are available here: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+##### The test data are available here: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+##### The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+#### Goal
+##### The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+
+### **Modeling Result Summary**
+#### Data Cleansing Techniques
+1. Near Zero Variables: Exclude variables if one class takes more than 98%
+2. Missing values: Exclude variables if missing values percentage is greater than 70%
+3. Transform the factors to numeric: Transform factor variables into numeric indicators
+4. Use ANOVA to exclude weak predictors: Run ANOVA test between all the predictors against the target variable, "classe". Exclude variables if ANOVA result is not significant
+
+#### Modeling Result Comparison
+##### The below table shows the performance on the validation dataset across different modeling techniques, including CART, GBM and Random Forest:
+
+Modeling Techniques | System.time | Accuracy | Kappa 
+--------------------|-------------|----------|-------
+CART                |5s           |0.946     |0.932  
+GBM                 |415s         |0.996     |0.995
+**Random Forest**   |**487s**     |**0.997** |**0.997**
+
+##### **Conclusion: The final model is the Random Forest model which gives the strongest performance on the validation dataset **
+
+
+### **Detailed Solution**
+#### **Data Loading**
+##### Load in necessary packages
+```{r warning=FALSE,message=FALSE}
+library(caret) # For general pre-modeling, modeling and evaluation techniques
+library(rpart) # For CART model
+library(randomForest) # For Random Forest model
+library(gbm) # For GBM model
+library(corrplot) # For correlation analysis
+library(nnet) # For multinominal model if applicable
+```
+
+##### Read in datasets
+```{r}
+# read in training dataset
+exercise_trn = read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+# read in test dataset
+exercise_test = read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+# explore the structure of the data
+dim(exercise_trn)
+str(exercise_trn)
+```
+
+#### **Data Cleansing**
+##### Identify the nearZeroVar columns and exclude variables with one class taking over 98%
+```{r}
+nzv = nearZeroVar(exercise_trn,freqCut = 98/2, saveMetrics = T) # set the threshold to 98/2
+```
+##### Column names with one class more than 98%
+```{r}
+colnames(exercise_trn[,nzv$nzv==T])
+exercise_trn = exercise_trn[,nzv$nzv==F] # exclude the columns with one class more than 98%
+```
+
+##### Create missing value summary
+```{r}
+na_summary = data.frame(num_na = colSums(is.na(exercise_trn)))
+na_summary = data.frame(Variable = rownames(na_summary),na_summary,na_ratio =
+                          na_summary$num_na/nrow(exercise_trn))
+```
+##### Identify variables with more than 70% of missing values and exclude them
+```{r}
+na_summary[na_summary$na_ratio>=0.7,c("Variable")]
+exercise_trn = exercise_trn[,na_summary$na_ratio<0.7] # keep the columns with less than 70% missing
+```
+
+##### Create dummy variables for factors
+```{r warning=FALSE}
+dummies = dummyVars(classe~.-user_name-raw_timestamp_part_1-raw_timestamp_part_2-cvtd_timestamp,
+                    data=exercise_trn)
+exercise_dummy = predict(dummies,newdata=exercise_trn)
+exercise_dummy = as.data.frame(exercise_dummy)
+# merge back the target variable
+exercise_target = exercise_trn[,c("X","classe")]
+exercise_allvars = merge(exercise_target,exercise_dummy,by="X",all=T)
+```
+
+
+##### Use ANOVA to explore strong predictors and exclude weak predictors
+```{r message=FALSE}
+for (i in 3:ncol(exercise_allvars)) {
+  summary <- summary(aov(exercise_allvars[,i]~exercise_allvars$classe,data=exercise_allvars))
+  p_value <- summary[[1]][["Pr(>F)"]][[1]]
+  print(c(names(exercise_allvars[i]),p_value))
+}
+```
+```{r}
+for (i in 3:ncol(exercise_allvars)) {
+  summary[i] <- summary(aov(exercise_allvars[,i]~exercise_allvars$classe,data=exercise_allvars))
+  p_value[i] <- summary[i][[1]][["Pr(>F)"]][[1]]
+}
+
+p_value_summary = data.frame(names(exercise_allvars),p_value)
+p_value_summary$importance = ifelse(p_value_summary$p_value<0.05,"H",ifelse(p_value_summary$p_value>0.2,"L","M"))
+table(p_value_summary$importance)
+```
+
+##### Exclude one extreme observation
+```{r}
+exercise_allvars = exercise_allvars[-5373,] # delete this observation
+```
+
+##### Remove variables with p_value greater than 0.9
+```{r}
+var_rm = p_value_summary[p_value_summary$p_value>=0.9,]$names.exercise_allvars.
+exercise_allvars_final = exercise_allvars[,!(names(exercise_allvars) %in% var_rm)]
+```
+
+##### Clean up the column names
+```{r}
+names(exercise_allvars_final)
+names(exercise_allvars_final) = gsub(".#DIV/0!","_0",names(exercise_allvars_final))
+```
+
+#### **Modeling (CART, Random Forest and GBM)**
+##### Divide the allvars dataset into train and validation
+```{r}
+set.seed(1234)
+ind = createDataPartition(exercise_allvars_final$classe,p=0.6,list=F)
+exercise_allvars_final_trn = exercise_allvars_final[ind,]
+exercise_allvars_final_val = exercise_allvars_final[-ind,]
+```
+
+##### Set up trainControl function
+```{r}
+control = trainControl(method="cv",number=5,classProbs = T)
+```
+
+##### **CART Model**
+##### Set up tuning parameters
+```{r}
+rpartGrid = expand.grid(cp=seq(0.0001,0.0020,0.0001))
+```
+##### Build the model
+```{r}
+set.seed(12345)
+system.time(mod_rpart <- train(classe~.-X,
+                               data=exercise_allvars_final_trn,method="rpart",
+                               trControl = control,tuneGrid=rpartGrid))
+```
+##### Model result summary
+```{r}
+mod_rpart
+```
+
+##### Check the performance on the validation dataset
+```{r}
+rpart_pred = predict(mod_rpart,newdata=exercise_allvars_final_val,type="raw")
+confusionMatrix(rpart_pred,exercise_allvars_final_val$classe)
+```
+
+##### **GBM (Gradient Boosting Machine)**
+##### Set up tuning parameters
+```{r}
+gbmGrid = expand.grid(interaction.depth=c(3,5),
+                      n.trees=c(200,250),
+                      shrinkage=0.05,
+                      n.minobsinnode=10)
+```
+
+##### Build the model
+```{r message=FALSE,warning=FALSE,comment=FALSE,results=FALSE}
+set.seed(123456)
+system.time(mod_gbm <- train(classe~.-X,
+                               data=exercise_allvars_final_trn,method="gbm",
+                               trControl = control,tuneGrid = gbmGrid))
+```
+
+##### Model result summary
+```{r}
+mod_gbm
+```
+##### Check the performance on the validation dataset
+```{r}
+gbm_pred = predict(mod_gbm,newdata=exercise_allvars_final_val,type="raw")
+confusionMatrix(gbm_pred,exercise_allvars_final_val$classe)
+```
+
+##### **Random Forest**
+##### Set up tuning parameters
+```{r}
+rfGrid = expand.grid(mtry=c(20,25,30))
+```
+
+##### Build the model
+```{r}
+set.seed(1234567)
+system.time(mod_rf <- train(classe~.-X,
+                            data=exercise_allvars_final_trn,method="rf",
+                            trControl = control, tuneGrid = rfGrid))
+```
+
+##### Model result summary
+```{r}
+mod_rf
+```
+##### Check the performance on the validation dataset
+```{r}
+rf_pred = predict(mod_rf,newdata=exercise_allvars_final_val,type="raw")
+confusionMatrix(rf_pred,exercise_allvars_final_val$classe)
+```
+
+
+
+
+
+
